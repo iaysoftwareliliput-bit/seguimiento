@@ -16,6 +16,9 @@
   .topbar-title { font-size:.88rem; font-weight:700; letter-spacing:1.5px; }
   .topbar-divider { width:1px; height:16px; background:#e5e7eb; }
   .topbar-subtitle { font-size:.78rem; color:#9ca3af; }
+  .topbar-area { font-size:.78rem; color:#1a1f2e; font-weight:600; }
+  .btn-cambiar { margin-left:auto; background:transparent; border:1px solid #d1d5db; color:#6b7280; padding:.35rem .75rem; border-radius:5px; font:600 .75rem 'Inter',sans-serif; cursor:pointer; }
+  .btn-cambiar:hover { border-color:#9ca3af; color:#374151; }
 
   .container { max-width:1040px; margin:0 auto; padding:2rem 1.5rem; }
   .seccion-titulo { font-size:.72rem; font-weight:700; color:#6b7280; text-transform:uppercase; letter-spacing:.8px; }
@@ -24,7 +27,6 @@
   .chip { padding:.4rem .85rem; border:1px solid #d1d5db; border-radius:5px; background:#fff; color:#374151; font:600 .8rem 'Inter',sans-serif; cursor:pointer; transition:all .15s; }
   .chip:hover { border-color:#9ca3af; }
   .chip.on { background:#1a1f2e; border-color:#1a1f2e; color:#fff; }
-  select.filtro { padding:.42rem .7rem; border:1px solid #d1d5db; border-radius:5px; font:500 .82rem 'Inter',sans-serif; color:#1a1f2e; background:#fff; }
   :focus-visible { outline:3px solid rgba(55,65,81,.3); outline-offset:1px; }
 
   .tabla-wrapper { overflow-x:auto; }
@@ -54,12 +56,30 @@
   .btn-eliminar:hover { background:#fef2f2; color:#dc2626; border-color:#fecaca; }
   .vacio { text-align:center; padding:3rem; color:#9ca3af; background:#fff; border:1px solid #dde1e7; border-radius:8px; }
 
+  /* Pantalla de selección de área */
+  .selector-wrap { min-height:100vh; display:flex; align-items:center; justify-content:center; padding:1.5rem; }
+  .selector-card { background:#fff; border:1px solid #dde1e7; border-radius:10px; padding:2rem; max-width:380px; width:100%; box-shadow:0 1px 3px rgba(0,0,0,.06); }
+  .selector-card h1 { font-size:1rem; margin-bottom:.3rem; }
+  .selector-card p { font-size:.82rem; color:#6b7280; margin-bottom:1.3rem; }
+  .selector-lista { display:flex; flex-direction:column; gap:8px; }
+  .selector-btn { padding:.7rem .9rem; border:1px solid #d1d5db; border-radius:6px; background:#fff; color:#1a1f2e; font:600 .88rem 'Inter',sans-serif; text-align:left; cursor:pointer; transition:all .15s; }
+  .selector-btn:hover { border-color:#1a1f2e; background:#f9fafb; }
+
   @media (max-width:640px) { .topbar { padding:0 1rem; } .container { padding:1.25rem 1rem; } }
 </style>
 </head>
 <body>
 
-<div id="admin-panel">
+<!-- Pantalla para elegir el área (solo se ve la primera vez, o al pulsar "Cambiar área") -->
+<div class="selector-wrap" id="selector" style="display:none;">
+  <div class="selector-card">
+    <h1>¿Cuál es tu área?</h1>
+    <p>Selecciona tu área para ver únicamente tus tareas asignadas.</p>
+    <div class="selector-lista" id="selectorLista"></div>
+  </div>
+</div>
+
+<div id="admin-panel" style="display:none;">
   <div class="topbar">
     <div class="topbar-left">
       <div class="topbar-icon">
@@ -67,20 +87,15 @@
       </div>
       <span class="topbar-title">LILIPUT</span>
       <div class="topbar-divider"></div>
-      <span class="topbar-subtitle">Seguimiento liliput</span>
+      <span class="topbar-area" id="areaActual"></span>
     </div>
+    <button class="btn-cambiar" id="btnCambiar">Cambiar área</button>
   </div>
 
   <div class="container">
     <div class="lista-header">
-      <div class="seccion-titulo">seguimiento liliput</div>
-      <div class="filtros">
-        <div class="filtros" id="chips"></div>
-        <select class="filtro" id="fArea" aria-label="Filtrar por área">
-          <option value="">Todas las áreas</option>
-          <option>Diseño gráfico</option><option>Psicología</option><option>Administración</option><option>Software</option>
-        </select>
-      </div>
+      <div class="seccion-titulo">Tus tareas</div>
+      <div class="filtros" id="chips"></div>
     </div>
     <div class="tabla-wrapper" id="lista"></div>
   </div>
@@ -88,50 +103,73 @@
 
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-  import { getFirestore, collection, query, orderBy, onSnapshot, doc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+  import { getFirestore, collection, query, where, onSnapshot, doc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
   const firebaseConfig = {
-    apiKey: "AIzaSyD3d2-G1cJUmS8S8fJs2WpbUzTC4STFsdc",
-    authDomain: "base-de-datos-de-insidencia.firebaseapp.com",
-    projectId: "base-de-datos-de-insidencia",
-    storageBucket: "base-de-datos-de-insidencia.firebasestorage.app",
-    messagingSenderId: "138097478549",
-    appId: "1:138097478549:web:9f10dea36b2f3ded45849c",
-    measurementId: "G-W94GTHG9DY"
+    apiKey: "AIzaSyBEfSTXcUGUuqjMx9Q4aVmrnBlAt4CLmBQ",
+    authDomain: "seguimiento-36625.firebaseapp.com",
+    projectId: "seguimiento-36625",
+    storageBucket: "seguimiento-36625.firebasestorage.app",
+    messagingSenderId: "766412601013",
+    appId: "1:766412601013:web:7768807f3a1f729a2530fc",
+    measurementId: "G-KW4B971W92"
   };
   const app = initializeApp(firebaseConfig);
   const db = getFirestore(app);
 
+  // Debe coincidir EXACTAMENTE con las opciones del panel del jefe (admin.html)
+  const AREAS = ["Diseño gráfico", "Psicología", "Administración", "Software", "Marketing"];
+  const CLAVE = "liliput_area";
+
   const $ = (id) => document.getElementById(id);
   const nombres = { pendiente:"Pendiente", en_proceso:"En proceso", resuelto:"Resuelto" };
-  let datos = [], filtroEstado = "";
-
-  onSnapshot(query(collection(db, "incidencias"), orderBy("creado", "desc")), (snap) => {
-    datos = snap.docs.map(d => ({ id:d.id, ...d.data() }));
-    pintar();
-  }, (e) => console.error(e));
+  let datos = [], filtroEstado = "", unsub = null;
 
   function esc(s) { const d = document.createElement("div"); d.textContent = s ?? ""; return d.innerHTML; }
 
-  function pintar() {
-    const area = $("fArea").value;
-    const base = datos.filter(i => !area || i.area === area);
-    const n = (e) => base.filter(i => i.estado === e).length;
+  function mostrarSelector() {
+    if (unsub) { unsub(); unsub = null; }
+    $("admin-panel").style.display = "none";
+    $("selector").style.display = "flex";
+    $("selectorLista").innerHTML = AREAS.map(a => `<button class="selector-btn" data-a="${esc(a)}">${esc(a)}</button>`).join("");
+  }
 
-    $("chips").innerHTML = [["", "Todas", base.length], ["pendiente", "Pendientes", n("pendiente")],
+  function mostrarPanel(area) {
+    $("selector").style.display = "none";
+    $("admin-panel").style.display = "block";
+    $("areaActual").textContent = area;
+
+    if (unsub) unsub();
+    unsub = onSnapshot(
+      query(collection(db, "tareas"), where("area", "==", area)),
+      (snap) => {
+        datos = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        datos.sort((a, b) => (b.creado?.seconds ?? 0) - (a.creado?.seconds ?? 0));
+        pintar();
+      },
+      (e) => {
+        console.error(e);
+        $("lista").innerHTML = `<div class="vacio">No se pudieron cargar las tareas. Revisa tu conexión o las reglas de Firestore.</div>`;
+      }
+    );
+  }
+
+  function pintar() {
+    const n = (e) => datos.filter(i => i.estado === e).length;
+
+    $("chips").innerHTML = [["", "Todas", datos.length], ["pendiente", "Pendientes", n("pendiente")],
       ["en_proceso", "En proceso", n("en_proceso")], ["resuelto", "Resueltas", n("resuelto")]]
       .map(([v, t, c]) => `<button class="chip ${filtroEstado === v ? "on" : ""}" data-e="${v}">${t}: ${c}</button>`).join("");
 
-    const lista = base.filter(i => !filtroEstado || i.estado === filtroEstado);
-    if (!lista.length) { $("lista").innerHTML = `<div class="vacio">No hay incidencias en esta vista.</div>`; return; }
+    const lista = datos.filter(i => !filtroEstado || i.estado === filtroEstado);
+    if (!lista.length) { $("lista").innerHTML = `<div class="vacio">No hay tareas en esta vista.</div>`; return; }
 
     $("lista").innerHTML = `<table>
-      <thead><tr><th>Fecha</th><th>Área</th><th>Nivel</th><th>Descripción</th><th>Estado</th><th></th></tr></thead>
+      <thead><tr><th>Fecha</th><th>Nivel</th><th>Descripción</th><th>Estado</th><th></th></tr></thead>
       <tbody>${lista.map(i => {
         const f = i.creado?.toDate ? i.creado.toDate().toLocaleString("es-PE", { day:"2-digit", month:"short", hour:"2-digit", minute:"2-digit" }) : "…";
         return `<tr class="${i.estado}">
           <td class="col-fecha">${f}</td>
-          <td>${esc(i.area)}</td>
           <td><span class="badge ${esc(i.nivel)}">${esc(i.nivel)}</span></td>
           <td class="col-desc">${esc(i.descripcion)}</td>
           <td><select class="estado ${i.estado}" data-id="${i.id}" aria-label="Estado">
@@ -142,22 +180,35 @@
       }).join("")}</tbody></table>`;
   }
 
-  $("fArea").onchange = pintar;
   $("chips").addEventListener("click", (e) => {
     const b = e.target.closest("[data-e]"); if (!b) return;
     filtroEstado = b.dataset.e; pintar();
   });
   $("lista").addEventListener("change", async (e) => {
     const s = e.target.closest("select.estado"); if (!s) return;
-    try { await updateDoc(doc(db, "incidencias", s.dataset.id), { estado: s.value }); }
+    try { await updateDoc(doc(db, "tareas", s.dataset.id), { estado: s.value }); }
     catch (err) { alert("No se pudo actualizar: " + err.message); }
   });
   $("lista").addEventListener("click", async (e) => {
     const b = e.target.closest("[data-del]"); if (!b) return;
-    if (!confirm("¿Confirma la eliminación de esta incidencia?")) return;
-    try { await deleteDoc(doc(db, "incidencias", b.dataset.del)); }
+    if (!confirm("¿Confirma la eliminación de esta tarea?")) return;
+    try { await deleteDoc(doc(db, "tareas", b.dataset.del)); }
     catch (err) { alert("No se pudo eliminar: " + err.message); }
   });
+  $("selectorLista").addEventListener("click", (e) => {
+    const b = e.target.closest("[data-a]"); if (!b) return;
+    localStorage.setItem(CLAVE, b.dataset.a);
+    mostrarPanel(b.dataset.a);
+  });
+  $("btnCambiar").addEventListener("click", () => {
+    localStorage.removeItem(CLAVE);
+    mostrarSelector();
+  });
+
+  // Arranque: si ya eligió un área antes, entra directo; si no, muestra el selector.
+  const guardada = localStorage.getItem(CLAVE);
+  if (guardada && AREAS.includes(guardada)) mostrarPanel(guardada);
+  else mostrarSelector();
 </script>
 </body>
 </html>
